@@ -1376,7 +1376,7 @@ struct submodule_parallel_fetch {
 	int changed_count;
 	struct strvec args;
 	struct repository *r;
-	const char *prefix;
+	const char *super_prefix;
 	int command_line_option;
 	int default_option;
 	int quiet;
@@ -1567,7 +1567,7 @@ get_fetch_task_from_index(struct submodule_parallel_fetch *spf,
 		if (task->repo) {
 			if (!spf->quiet)
 				strbuf_addf(err, _("Fetching submodule %s%s\n"),
-					    spf->prefix, ce->name);
+					    spf->super_prefix, ce->name);
 
 			spf->index_count++;
 			return task;
@@ -1629,7 +1629,7 @@ get_fetch_task_from_changed(struct submodule_parallel_fetch *spf,
 		if (!spf->quiet)
 			strbuf_addf(err,
 				    _("Fetching submodule %s%s at commit %s\n"),
-				    spf->prefix, task->sub->path,
+				    spf->super_prefix, task->sub->path,
 				    find_unique_abbrev(cs_data->super_oid,
 						       DEFAULT_ABBREV));
 
@@ -1687,11 +1687,10 @@ static int get_next_submodule(struct child_process *cp, struct strbuf *err,
 			strvec_pushv(&cp->args, task->git_args.v);
 		strvec_pushv(&cp->args, spf->args.v);
 		strvec_push(&cp->args, task->default_argv);
-		strvec_push(&cp->args, "--submodule-prefix");
+		strvec_push(&cp->args, "--super-prefix");
 
-		strbuf_addf(&submodule_prefix, "%s%s/",
-						spf->prefix,
-						task->sub->path);
+		strbuf_addf(&submodule_prefix, "%s%s/", spf->super_prefix,
+			    task->sub->path);
 		strvec_push(&cp->args, submodule_prefix.buf);
 		*task_cb = task;
 
@@ -1707,7 +1706,7 @@ static int get_next_submodule(struct child_process *cp, struct strbuf *err,
 		spf->oid_fetch_tasks_nr--;
 
 		strbuf_addf(&submodule_prefix, "%s%s/",
-			    spf->prefix, task->sub->path);
+			    spf->super_prefix, task->sub->path);
 
 		child_process_init(cp);
 		prepare_submodule_repo_env_in_gitdir(&cp->env);
@@ -1717,7 +1716,7 @@ static int get_next_submodule(struct child_process *cp, struct strbuf *err,
 		strvec_init(&cp->args);
 		strvec_pushv(&cp->args, spf->args.v);
 		strvec_push(&cp->args, "on-demand");
-		strvec_push(&cp->args, "--submodule-prefix");
+		strvec_push(&cp->args, "--super-prefix");
 		strvec_push(&cp->args, submodule_prefix.buf);
 
 		/* NEEDSWORK: have get_default_remote from submodule--helper */
@@ -1813,7 +1812,7 @@ out:
 
 int fetch_submodules(struct repository *r,
 		     const struct strvec *options,
-		     const char *prefix, int command_line_option,
+		     const char *super_prefix, int command_line_option,
 		     int default_option,
 		     int quiet, int max_parallel_jobs)
 {
@@ -1835,7 +1834,7 @@ int fetch_submodules(struct repository *r,
 	spf.command_line_option = command_line_option;
 	spf.default_option = default_option;
 	spf.quiet = quiet;
-	spf.prefix = prefix;
+	spf.super_prefix = super_prefix ? super_prefix : "";
 
 	if (!r->worktree)
 		goto out;
@@ -1847,7 +1846,7 @@ int fetch_submodules(struct repository *r,
 	for (i = 0; i < options->nr; i++)
 		strvec_push(&spf.args, options->v[i]);
 	strvec_push(&spf.args, "--recurse-submodules-default");
-	/* default value, "--submodule-prefix" and its value are added later */
+	/* default value, "--super-prefix" and its value are added later */
 
 	calculate_changed_submodule_paths(r, &spf.changed_submodule_names);
 	string_list_sort(&spf.changed_submodule_names);
