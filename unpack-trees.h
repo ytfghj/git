@@ -74,6 +74,7 @@ struct unpack_trees_options {
 		     dry_run;
 	enum unpack_trees_reset_type reset;
 	const char *prefix;
+	const char *super_prefix;
 	int cache_bottom;
 	struct pathspec *pathspec;
 	merge_fn_t fn;
